@@ -9,21 +9,68 @@
    * @description
    * # Description
    *
+   * This module detects network status (online/offline).
    *
+   * Service {@link mfw.network.status.service:$mfwNetwork `$mfwNetwork`} provides network status API and a callback
+   * registration API to be notified when network status changes.
+   *
+   * # Features
+   *
+   * * Platform-dependent implementation of underlying network status.
+   * * Event-driven API to detect status changes.
+   * * Endpoint status based on HTTP response codes (Internet connection but server is down).
    */
   var NetworkModule = angular.module('mfw.network.status', []);
 
-
+  /**
+   * @ngdoc service
+   * @name mfw.network.status.service:$mfwHtml5NetworkStatus
+   *
+   * @description
+   * Network status detection based on {@link https://developer.mozilla.org/en-US/docs/Online_and_offline_events HTML5} API.
+   */
   NetworkModule.factory('$mfwHtml5NetworkStatus', html5NetworkStatus);
   html5NetworkStatus.$inject = ['$log', '$window'];
   function html5NetworkStatus($log, $window) {
     var service = {
+      /**
+       * @ngdoc method
+       * @name mfw.network.status.service:$mfwHtml5NetworkStatus#isOnline
+       * @methodOf mfw.network.status.service:$mfwHtml5NetworkStatus
+       *
+       * @description
+       * Returns whether the network is considered online or not.
+       *
+       * @returns {boolean} Whether network is online or not.
+       */
       isOnline: function () {
         return navigator.onLine;
       },
+      /**
+       * @ngdoc method
+       * @name mfw.network.status.service:$mfwHtml5NetworkStatus#isOffline
+       * @methodOf mfw.network.status.service:$mfwHtml5NetworkStatus
+       *
+       * @description
+       * Returns whether the network is considered offline or not.
+       *
+       * @returns {boolean} Whether network is offline or not.
+       */
       isOffline: function () {
         return !navigator.onLine;
       },
+      /**
+       * @ngdoc method
+       * @name mfw.network.status.service:$mfwHtml5NetworkStatus#onOnline
+       * @methodOf mfw.network.status.service:$mfwHtml5NetworkStatus
+       *
+       * @description
+       * Register a new callback to be executed when network turns up.
+       *
+       * @param {Function} cb Callback.
+       *
+       * @returns {Function} Deregister callback.
+       */
       onOnline: function (cb) {
         var listener = cb;
         $window.addEventListener('online', listener, false);
@@ -32,6 +79,18 @@
           $window.removeEventListener('online', listener);
         };
       },
+      /**
+       * @ngdoc method
+       * @name mfw.network.status.service:$mfwHtml5NetworkStatus#onOffline
+       * @methodOf mfw.network.status.service:$mfwHtml5NetworkStatus
+       *
+       * @description
+       * Register a new callback to be executed when network turns down.
+       *
+       * @param {Function} cb Callback.
+       *
+       * @returns {Function} Deregister callback.
+       */
       onOffline: function (cb) {
         var listener = cb;
         $window.addEventListener('offline', listener, false);
@@ -158,8 +217,8 @@
        *
        * Provided implementations:
        *
-       * * {@link mfw.network.status.service:$mfwNetworkHttpInterceptor `$mfwNetworkHttpInterceptor`}: implemented
-       *    as a {@link https://docs.angularjs.org/api/ng/service/$http#interceptors} `$http` interceptor}.
+       * * {@link mfw.network.status.service:$mfwNgHttpEndpointStatus `$mfwNgHttpEndpointStatus`}: implemented
+       *    as a {@link https://docs.angularjs.org/api/ng/service/$http#interceptors `$http` interceptor}.
        * * {@link mfw.network.status-restangular.service:$mfwRestangularEndpointStatus `$mfwRestangularEndpointStatus`}:
        *    implemented as {@link https://github.com/mgonto/restangular Restangular}
        *    {@link https://github.com/mgonto/restangular#seterrorinterceptor error interceptor}
@@ -329,7 +388,7 @@
           var newStatus = _isOnlineStatus(response);
           endpointStatus[endpoint] = newStatus;
 
-          if (prevStatus != newStatus) {
+          if (prevStatus !== newStatus) {
             $log.debug('Endpoint', endpoint, 'status changed to online =', newStatus);
 
             // Notify listeners

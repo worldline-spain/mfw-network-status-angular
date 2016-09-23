@@ -13,10 +13,13 @@
   function addHttpInterceptor($provide, $httpProvider) {
     /**
      * @ngdoc service
-     * @name mfw.network.status.service:$mfwNetworkHttpInterceptor
+     * @name mfw.network.status.service:$mfwNgHttpEndpointStatus
      *
      * @description
-     * Implementation of a {@link https://docs.angularjs.org/api/ng/service/$http#interceptors `$http` interceptor}
+     * Service that implements {@link mfw.network.status.service:$mfwNetwork#description_endpoint-status endpoint status}
+     * based on {@link https://docs.angularjs.org/api/ng/service/$http `$http`} service.
+     *
+     * The service itself is a {@link https://docs.angularjs.org/api/ng/service/$http#interceptors `$http` interceptor}
      * that {@link mfw.network.status.service:$mfwNetwork#methods_setEndpointStatus notifies `$mfwNetwork`}
      * for each HTTP response.
      *
@@ -24,20 +27,19 @@
      *
      * * `response`
      * * `responseError`
-     *
      */
-    $provide.factory('$mfwNetworkHttpInterceptor', ['$q', '$log', '$mfwNetwork',
+    $provide.factory('$mfwNgHttpEndpointStatus', ['$q', '$log', '$mfwNetwork',
       function ($q, $log, $mfwNetwork) {
         return {
           // // optional method
           // 'request': function (config) {
-          //   $log.debug('$mfwNetworkHttpInterceptor: New request', config);
+          //   $log.debug('$mfwNgHttpEndpointStatus: New request', config);
           //   return config;
           // },
           //
           // // optional method
           // 'requestError': function (rejection) {
-          //   $log.debug('$mfwNetworkHttpInterceptor: Request error', rejection);
+          //   $log.debug('$mfwNgHttpEndpointStatus: Request error', rejection);
           //   return rejection;
           // },
 
@@ -58,6 +60,6 @@
         };
       }]);
 
-    $httpProvider.interceptors.push('$mfwNetworkHttpInterceptor');
+    $httpProvider.interceptors.push('$mfwNgHttpEndpointStatus');
   }
 })();

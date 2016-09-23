@@ -40,9 +40,9 @@
    * @description
    * Provider of {@link mfw.network.status-restangular.service:$mfwRestangularEndpointStatus `$mfwRestangularEndpointStatus`} service.
    */
-  NetworkModule.provider('$mfwRestangularEndpointStatus', restangularEndpointStatus);
-  restangularEndpointStatus.$inject = ['RestangularProvider'];
-  function restangularEndpointStatus() {
+  NetworkModule.provider('$mfwRestangularEndpointStatus', RestangularEndpointStatus);
+  RestangularEndpointStatus.$inject = ['RestangularProvider'];
+  function RestangularEndpointStatus() {
     /**
      * @type {Object}
      */
@@ -72,8 +72,11 @@
        * @name mfw.network.status-restangular.service:$mfwRestangularEndpointStatus
        *
        * @description
-       * Service that registers error and response interceptors for all specified Restangular configurations and
-       * {@link mfw.network.status.service:$mfwNetwork#methods_setEndpointStatus notifies `$mfwNetwork`}
+       * Service that implements {@link mfw.network.status.service:$mfwNetwork#description_endpoint-status endpoint status}
+       * based on {@link https://github.com/mgonto/restangular Restangular}.
+       *
+       * The service registers error and response interceptors for all {@link mfw.network.status-restangular.$mfwRestangularEndpointStatusProvider#methods_config specified}
+       * Restangular configurations and {@link mfw.network.status.service:$mfwNetwork#methods_setEndpointStatus notifies `$mfwNetwork`}
        * for each HTTP response.
        */
       var service = {};

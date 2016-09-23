@@ -1,16 +1,15 @@
-# MFW Ionic InApp Browser v1.0.3
+# MFW Network Status for AngularJS and Ionic v1.0.0
 
-This AngularJS module provides a way to open external URLs using internal browser as part of **Mobile FrameWork (MFW)** for **Ionic** applications.
+This AngularJS module provides a way to detect whether network is online or not as part of **Mobile FrameWork (MFW)**
+for **AngularJS** and **Ionic** applications.
 
 
 
 ## Features
 
 
-This module offers an abstraction of ngCordova's [`$cordovaInAppBrowser`](http://ngcordova.com/docs/plugins/inAppBrowser/).
+This module offers an abstraction of ngCordova's [`$cordovaNetwork`](http://ngcordova.com/docs/plugins/network/).
 
-Furthermore, iOS users can take advantage of newest [`SFSafariViewController`](https://developer.apple.com/reference/safariservices/sfsafariviewcontroller),
-when available, by using [cordova-plugin-safariviewcontroller](https://github.com/EddyVerbruggen/cordova-plugin-safariviewcontroller) plugin.
 
 
 
@@ -18,10 +17,9 @@ when available, by using [cordova-plugin-safariviewcontroller](https://github.co
 
 ### Plugins
 
-This module requires the following Cordova plugins:
+If you are in an Ionic environment and you want to use `mfw-ionic.network.status` module you'll need the following Cordova plugins:
 
-* [cordova-plugin-inappbrowser](https://github.com/apache/cordova-plugin-inappbrowser)
-* [cordova-plugin-safariviewcontroller](https://github.com/EddyVerbruggen/cordova-plugin-safariviewcontroller): _optional_ but extremely recommended
+* [cordova-plugin-network-information](https://github.com/apache/cordova-plugin-network-information)
 
 
 ### Via Bower
@@ -43,17 +41,25 @@ Download source files and include them into your project sources.
 
 Once dependency has been downloaded, configure your application module(s) to require:
 
-* `mfw-ionic.inapp-browser` module: provider and service to register for push notifications.
+* `mfw.network.status` module: main module with `$mfwNetwork` service.
+* `mfw.network.status-restangular` module: include it detect endpoint status based on
+    [Restangular](https://github.com/mgonto/restangular) interceptors.
+* `mfw-ionic.network.status` module: Ionic implementation of network status based on ngCordova's
+    [$cordovaNetwork](http://ngcordova.com/docs/plugins/network/) service.
 
 ```js
 angular
   .module('your-module', [
       // Your other dependencies
-      'mfw-ionic.inapp-browser'
+      'mfw.network.status',
+      // If using Restangular
+      'mfw.network.status-restangular',
+      // If Ionic app
+      'mfw-ionic.network.status'
   ]);
 ```
 
-Now you can inject `$mwfiBrowser` service.
+Now you can inject `$mfwNetwork` service.
 
 
 > For further documentation, please read the generated `ngDocs` documentation inside `docs/` folder.
@@ -63,59 +69,77 @@ Now you can inject `$mwfiBrowser` service.
 
 ### Configure
 
-Configure default options for both plugins:
+Configure default options for each module.
 
-* [InAppBrowser](https://github.com/apache/cordova-plugin-inappbrowser#cordovainappbrowseropen)
-* [SafariViewController](https://github.com/EddyVerbruggen/cordova-plugin-safariviewcontroller/wiki#options)
+
+* Configure platform-dependent network status detection.
+* Configure endpoint status detection based on HTTP status codes.
 
 ```js
 angular
   .module('your-module')
-  .config(configInAppBrowser);
+  .config(configNetworkStatus);
 
-configInAppBrowser.$inject = ['$mwfiBrowserProvider'];
-function configInAppBrowser($mwfiBrowserProvider) {
-  $mwfiBrowserProvider.config({
-    /*
-     * InAppBrowser
-     */
-    // Common
-    target: '_blank',
-    location: 'no',
+configNetworkStatus.$inject = ['$mwfiBrowserProvider'];
+function configNetworkStatus($mwfiBrowserProvider) {
+  $mfwNetworkProvider.config({
+    // Set a custom network status detector
+    networkStatusService: 'myCustomNetworkStatusDetector',
+    // Assuming your server does not use 404 for REST requests, it's considered down when 404 is returned
+    downStatusCodes: [0, 404, 502, 503, 504]
+  });
+}
+```
 
-    // Android
-    zoom: 'no',
+* If you are using Restangular, configure all Restangular configurations you want to intercept:
 
-    // iOS
-    allowInlineMediaPlayback: 'yes',
-    presentationstyle: 'fullscreen',
-    transitionstyle: 'crossdissolve',
-    toolbar: 'yes',
-    //closebuttoncaption: 'Ok'
+```js
+angular
+  .module('your-module')
+  .config(configEndpointStatus);
 
-    // Windows Phone
-    fullscreen: 'yes',
-
-    /*
-     * SafariViewController
-     */
-    transition: 'slide', // (this only works in iOS 9.1/9.2 and lower) unless animated is false you can choose from: curl, flip, fade, slide (default)
-    enterReaderModeIfAvailable: true, // default false
-    tintColor: "#000000", // default is ios blue
-    barColor: "#eaeaea", // on iOS 10+ you can change the background color as well
-    controlTintColor: "#ffffff" // on iOS 10+ you can override the default tintColor
+configEndpointStatus.$inject = ['$mfwRestangularEndpointStatusProvider'];
+function configEndpointStatus($mfwRestangularEndpointStatusProvider) {
+  $mfwRestangularEndpointStatusProvider.config({
+    restangularConfig: ['BaseRestangular', 'AuthRestangular']
   });
 }
 ```
 
 
-### Open links
+### Check network status
 
 ```js
-Controller.$inject = ['$mwfiBrowser'];
-function Controller($mwfiBrowser) {
-  // Open in InApp browser
-  $mwfiBrowser.open('https://github.com', '_blank');
+Controller.$inject = ['$log', '$scope', '$mwfNetwork', 'API_ENDPOINT'];
+function Controller($log, $scope, $mwfNetwork, API_ENDPOINT) {
+  // To be notified when app enterns online mode
+  var deregisterOnOnline = $mfwNetwork.onOnline(function () {
+    $log.log('ONLINE MODE');
+  });
+  
+  // To be notified when app enterns offline mode
+  var deregisterOffOnline = $mfwNetwork.onOffline(function () {
+    $log.log('OFFLINE MODE');  
+  });
+  
+  // Endpoint status update: to be notified when endpoint status changes
+  var deregisterEndpointStatus = $mfwNetwork.onEndpointStatusChange(API_ENDPOINT, function (isOnline) {
+    $log.log('Endpoint ' + API_ENDPOINT + ' online = ' + isOnline);
+  });
+  
+  // Check current status
+  if ($mfwNetwork.isOnline()) {
+    $log.log('Currently network is online');
+  } else {
+    $log.log('Currently network is offline');
+  }
+
+  // Clean up
+  $scope.$on('$destroy', function cleanUp() {
+    deregisterOnOnline();
+    deregisterOffOnline();
+    deregisterEndpointStatus();
+  });
 }
 ```
 
