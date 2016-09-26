@@ -80,8 +80,8 @@ angular
   .module('your-module')
   .config(configNetworkStatus);
 
-configNetworkStatus.$inject = ['$mwfiBrowserProvider'];
-function configNetworkStatus($mwfiBrowserProvider) {
+configNetworkStatus.$inject = ['$mfwNetworkProvider'];
+function configNetworkStatus($mfwNetworkProvider) {
   $mfwNetworkProvider.config({
     // Set a custom network status detector
     networkStatusService: 'myCustomNetworkStatusDetector',
@@ -110,8 +110,13 @@ function configEndpointStatus($mfwRestangularEndpointStatusProvider) {
 ### Check network status
 
 ```js
-Controller.$inject = ['$log', '$scope', '$mwfNetwork', 'API_ENDPOINT'];
-function Controller($log, $scope, $mwfNetwork, API_ENDPOINT) {
+/*
+ * E.g.
+ * API_BASE_ENDPOINT: https://your-domain/context
+ * GET_RECENT_MESSAGES_ENDPOINT: https://your-domain/context/messages/last
+ */
+Controller.$inject = ['$log', '$scope', '$mwfNetwork', 'API_ENDPOINT', 'GET_RECENT_MESSAGES_ENDPOINT'];
+function Controller($log, $scope, $mwfNetwork, API_ENDPOINT, GET_RECENT_MESSAGES_ENDPOINT) {
   // To be notified when app enterns online mode
   var deregisterOnOnline = $mfwNetwork.onOnline(function () {
     $log.log('ONLINE MODE');
@@ -122,11 +127,19 @@ function Controller($log, $scope, $mwfNetwork, API_ENDPOINT) {
     $log.log('OFFLINE MODE');  
   });
   
+  // urlMatcher is a `RegExp` object that accepts URLs with base = https://your-domain/context
+  // urlMatcher.exec(GET_RECENT_MESSAGES_ENDPOINT) != null
   // Endpoint status update: to be notified when endpoint status changes
-  var deregisterEndpointStatus = $mfwNetwork.onEndpointStatusChange(API_ENDPOINT, function (isOnline) {
+  // Listen for URL pattern (all API)
+  var urlMatcher = $mfwNetwork.endpointUrlMatcher(API_BASE_ENDPOINT);
+  var deregisterMatcherEndpointStatus = $mfwNetwork.onEndpointStatusChange(urlMatcher, function (isOnline, endpoint) {
+    $log.log('Endpoint matcher ' + urlMatcher.source, 'for endpoint' +  endpoint + ' online = ' + isOnline);
+  });
+  // Listen for a specific endpoint URL
+  var deregisterEndpointStatus = $mfwNetwork.onEndpointStatusChange(GET_RECENT_MESSAGES_ENDPOINT, function (isOnline) {
     $log.log('Endpoint ' + API_ENDPOINT + ' online = ' + isOnline);
   });
-  
+
   // Check current status
   if ($mfwNetwork.isOnline()) {
     $log.log('Currently network is online');
@@ -138,6 +151,7 @@ function Controller($log, $scope, $mwfNetwork, API_ENDPOINT) {
   $scope.$on('$destroy', function cleanUp() {
     deregisterOnOnline();
     deregisterOffOnline();
+    deregisterMatcherEndpointStatus();
     deregisterEndpointStatus();
   });
 }
