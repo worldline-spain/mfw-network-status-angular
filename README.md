@@ -115,8 +115,8 @@ function configEndpointStatus($mfwRestangularEndpointStatusProvider) {
  * API_BASE_ENDPOINT: https://your-domain/context
  * GET_RECENT_MESSAGES_ENDPOINT: https://your-domain/context/messages/last
  */
-Controller.$inject = ['$log', '$scope', '$mwfNetwork', 'API_ENDPOINT', 'GET_RECENT_MESSAGES_ENDPOINT'];
-function Controller($log, $scope, $mwfNetwork, API_ENDPOINT, GET_RECENT_MESSAGES_ENDPOINT) {
+Controller.$inject = ['$log', '$scope', '$mwfNetwork', 'API_BASE_ENDPOINT', 'GET_RECENT_MESSAGES_ENDPOINT'];
+function Controller($log, $scope, $mwfNetwork, API_BASE_ENDPOINT, GET_RECENT_MESSAGES_ENDPOINT) {
   // To be notified when app enterns online mode
   var deregisterOnOnline = $mfwNetwork.onOnline(function () {
     $log.log('ONLINE MODE');
@@ -137,7 +137,7 @@ function Controller($log, $scope, $mwfNetwork, API_ENDPOINT, GET_RECENT_MESSAGES
   });
   // Listen for a specific endpoint URL
   var deregisterEndpointStatus = $mfwNetwork.onEndpointStatusChange(GET_RECENT_MESSAGES_ENDPOINT, function (isOnline) {
-    $log.log('Endpoint ' + API_ENDPOINT + ' online = ' + isOnline);
+    $log.log('Endpoint ' + GET_RECENT_MESSAGES_ENDPOINT + ' online = ' + isOnline);
   });
 
   // Check current status
