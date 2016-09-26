@@ -1,0 +1,37 @@
+{
+  "name": "mfw-network-status-angular",
+  "description": "MFW network status library for AngularJS and Ionic 1.* applications",
+  "authors": [
+    "Juan Belmonte Rodríguez <juan.belmonte@worldline.com> (https://github.com/jbelmonte)",
+    "Jordi Escudero Subirana <jordi.escudero@worldline.com> (https://github.com/jordiescudero)"
+  ],
+  "license": "Apache-2.0",
+  "main": [
+    "dist/mfw-ionic-inapp-browser.service.js"
+  ],
+  "homepage": "https://github.com/worldline-spain/mfw-network-status-angular",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/worldline-spain/mfw-network-status-angular"
+  },
+  "keywords": [
+    "MFW",
+    "network",
+    "network status",
+    "online",
+    "offline",
+    "$mwfNetwork"
+  ],
+  "moduleType": "globals",
+  "devDependencies": {
+    "ionic": "1.2.4",
+    "ngCordova": "~0.1.20-alpha"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
