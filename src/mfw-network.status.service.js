@@ -166,6 +166,14 @@
       var endpointStatusCallbacks = {};
       /**
        * @description
+       * Registered callbacks for endpoint matchers status changes.
+       *
+       * @type {{string, Function[]}}
+       */
+      var matcherStatusCallbacks = {};
+
+      /**
+       * @description
        * Platform-specific implementation of network status.
        *
        * The service is retrieved using {@link mfw.network.status.$mfwNetworkProvider#methods_config configured} `networkStatusService`.
@@ -231,9 +239,10 @@
 
         onOnline: onOnline,
         onOffline: onOffline,
-        onEndpointStatusChange: onEndpointStatusChange,
 
-        setEndpointStatus: _setEndpointStatus
+        onEndpointStatusChange: onEndpointStatusChange,
+        setEndpointStatus: setEndpointStatus,
+        endpointUrlMatcher: endpointUrlMatcher
       };
 
       initialize();
@@ -294,12 +303,34 @@
        * Returns whether an endpoint is {@link mfw.network.status.$mfwNetworkProvider#methods_config considered online}
        * or not based on recent HTTP requests.
        *
-       * @param {string} endpoint Endpoint URL.
+       * @param {string|RegExp} endpoint Endpoint URL string or
+       *    {@link mfw.network.status.service:$mfwNetwork#methods_endpointUrlMatcher URL matcher}.
        *
-       * @returns {boolean} Whether endpoint is online or not.
+       * @returns {boolean=} Whether endpoint is online or not.
        */
       function isEndpointUp(endpoint) {
-        return endpointStatus[endpoint] !== false;
+        if (angular.isString(endpoint)) {
+          // Specific URL
+          if (endpoint in endpointStatus) {
+            // Cached status
+            return endpointStatus[endpoint];
+          }
+        } else {
+          // RegExp
+          var isUp;
+          for (var cachedEndpoint in endpointStatus) {
+            if (endpoint.exec(cachedEndpoint)) {
+              if (endpointStatus[cachedEndpoint]) {
+                // Found one endpoint online
+                return true;
+              } else {
+                // Found one endpoint status but it was offline. Check next one.
+                isUp = false;
+              }
+            }
+          }
+          return isUp;
+        }
       }
 
       /**
@@ -342,7 +373,8 @@
        * @description
        * Register a new callback for online/offline status changes for a specific endpoint.
        *
-       * @param {string} endpoint Endpoint URL.
+       * @param {string|RegExp} endpoint Endpoint URL string or
+       *    {@link mfw.network.status.service:$mfwNetwork#methods_endpointUrlMatcher URL matcher}.
        * @param {Function} cb Callback.
        *
        * @returns {Function} Deregister callback.
@@ -382,22 +414,43 @@
        *
        * @see {@link mfw.network.status.$mfwNetworkProvider#config}
        */
-      function _setEndpointStatus(endpoint, response) {
+      function setEndpointStatus(endpoint, response) {
+        var currentStatus = endpointStatus[endpoint];
         if (arguments.length === 2) {
-          var prevStatus = endpointStatus[endpoint];
           var newStatus = _isOnlineStatus(response);
           endpointStatus[endpoint] = newStatus;
 
-          if (prevStatus !== newStatus) {
+          if (currentStatus !== newStatus) {
             $log.debug('Endpoint', endpoint, 'status changed to online =', newStatus);
+            currentStatus = newStatus;
 
             // Notify listeners
             $timeout(function notifyEndpointStatusChanged() {
-              _triggerOnEndPointStatusChange(endpoint);
+              _triggerOnEndPointStatusChange(endpoint, newStatus);
             });
           }
         }
-        return isEndpointUp(endpoint);
+        return currentStatus;
+      }
+
+      /**
+       * @ngdoc method
+       * @name mfw.network.status.service:$mfwNetwork#endpointUrlMatcher
+       * @methodOf mfw.network.status.service:$mfwNetwork
+       *
+       * @description
+       * This function returns a `RegExp` object to match a specific URL address as base URL for other URL strings.
+       *
+       * @param {string} url URL to match.
+       * @returns {RegExp} URL matcher.
+       */
+      function endpointUrlMatcher(url) {
+        var regexpString = _endpointUrlRegExp(url);
+        return new RegExp(regexpString);
+      }
+
+      function _endpointUrlRegExp(url) {
+        return '^' + url.replace(/([\:\/\.\?])/g, '\\$1');
       }
 
       /**
@@ -418,42 +471,77 @@
       /**
        * @description
        *
-       * @param {string} endpoint Endpoint URL.
+       * @param {string|RegExp} endpoint Endpoint URL string or
+       *    {@link mfw.network.status.service:$mfwNetwork#methods_endpointUrlMatcher URL matcher}.
        * @param {Function} cb Callback.
        * @private
        */
       function _registerEndpointStatusListener(endpoint, cb) {
-        if (!(endpoint in endpointStatusCallbacks)) {
-          endpointStatusCallbacks[endpoint] = [];
+        // Different storage: per-URL vs per-RegExp
+        var storage;
+        if (angular.isString(endpoint)) {
+          storage = endpointStatusCallbacks;
+        } else {
+          storage = matcherStatusCallbacks;
+          // Store regexp string
+          endpoint = endpoint.source;
         }
-        endpointStatusCallbacks[endpoint].push(cb);
+
+        // Register
+        if (!(endpoint in storage)) {
+          storage[endpoint] = [];
+        }
+        storage[endpoint].push(cb);
       }
 
       /**
        * @description
        *
-       * @param {string} endpoint Endpoint URL.
+       * @param {string|RegExp} endpoint Endpoint URL string or
+       *    {@link mfw.network.status.service:$mfwNetwork#methods_endpointUrlMatcher URL matcher}.
        * @param {Function} cb Callback.
        * @private
        */
       function _deregisterEndpointStatusListener(endpoint, cb) {
-        var index = endpointStatusCallbacks[endpoint].indexOf(cb);
-        endpointStatusCallbacks[endpoint].splice(index, 1);
+        // Different storage: per-URL vs per-RegExp
+        var storage;
+        if (angular.isString(endpoint)) {
+          storage = endpointStatusCallbacks;
+        } else {
+          storage = matcherStatusCallbacks;
+          // Store regexp string
+          endpoint = endpoint.source;
+        }
+
+        // Deegister
+        var index = storage[endpoint].indexOf(cb);
+        storage[endpoint].splice(index, 1);
       }
 
       /**
        * @description
-       * Invokes all registered callbacks for a specific endpoint.
+       * Invokes all registered callbacks for a specific endpoint with its new status.
        *
        * @param {string} endpoint Endpoint URL.
+       * @param {boolean} isOnline Whether the endpoint is online or not.
        * @private
        */
-      function _triggerOnEndPointStatusChange(endpoint) {
-        $log.debug('Triggering endpoint status changed for endpoint', endpoint);
-        var endpointStatus = isEndpointUp(endpoint);
-        angular.forEach(endpointStatusCallbacks[endpoint], function notifyEndpointListener(cb) {
-          cb(endpointStatus, endpoint);
-        });
+      function _triggerOnEndPointStatusChange(endpoint, isOnline) {
+        $log.debug('Triggering endpoint status changed for endpoint', endpoint, 'online =', isOnline);
+
+        // Trigger listeners of that specific URL
+        angular.forEach(endpointStatusCallbacks[endpoint], notifyEndpointListener);
+
+        // Trigger listeners of URL matchers
+        for (var regExp in matcherStatusCallbacks) {
+          if (endpoint.match(regExp)) {
+            angular.forEach(matcherStatusCallbacks[endpoint], notifyEndpointListener);
+          }
+        }
+
+        function notifyEndpointListener(cb) {
+          cb(isOnline, endpoint);
+        }
       }
     }];
   }
